@@ -25,10 +25,7 @@ NextLines ← {𝕨𝕊𝕩:
           max_x ← ⌈˝⌈˝𝕩
           min_x ← ⌊˝⊑˘𝕩
           diff_x ← max_x - min_x
-          •Show "diff_x"‿diff_x
           out ← (⊑diff_x + 𝕨)‿0‿0‿0⊸+˘ 𝕩
-          •Show "out"‿out
-          out
 }
 x_spacing ← 3×rec
 w_lines ← x_spacing NextLines act_lines
@@ -37,13 +34,22 @@ DrawRectangleLines ← {r‿g‿b‿a𝕊x‿y‿wx‿wy:
 raylib.DrawRectangleLines⟨x, y, wx, wy, r‿g‿b‿a⟩
 }⎉1‿2
 
+sys_x‿sys_y ← 40‿40
+sys_interleave ← {
+    bxs ← sys_x⊸×(×´ dims)⥊↕tileSize
+    bys ← sys_y⊸×(⥊tileSize⥊˘↕tileSize)
+    out ← bxs ∾˘ bys
+    out2 ← 4↑˘out
+}
+spOffX‿spOffY ← 150‿170
+sys_w_lines ← (sys_interleave + (spOffX‿spOffY‿0‿0⊸+˘ w_lines))
+•Show sys_w_lines
 PerFrame ← {𝕤
     elapsedSecs ← ⌈clock.Time@
-    # •Show elapsedSecs
-    #•Show activations‿weight‿expectedOut
     {white DrawRectangleLines 𝕩}˘ act_lines
     {white DrawRectangleLines 𝕩}˘ w_lines
     {white DrawRectangleLines 𝕩}˘ out_lines
+    {white DrawRectangleLines 𝕩}˘ sys_w_lines
 } r.draw._withCanvas⟜black
 
 PerFrame•_While_(¬r.window.ShouldClose)r.window._openAs "DistGEMM"
