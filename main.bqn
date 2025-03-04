@@ -46,8 +46,25 @@ sys_w_lines ← (sys_interleave + (spOffX‿spOffY‿0‿0⊸+˘ w_lines))
 sys_w_start ← 2↑˘sys_w_lines
 sys_w_txt_pos ← ((out_wid‿out_wid)÷2)⊸+˘ sys_w_start
 sys_w_txt ← (<˘ sys_w_txt_pos) ∾˘ (•Fmt¨ ⥊weight)
-•Show sys_w_txt
 fontSize ← 20
+
+right ← [1, 0]
+down ← [0, 1]
+up ← ¯1×down
+left ← ¯1×right
+MkLinks ← {𝕊𝕩:
+    out_st ← 2↑˘𝕩
+    up_st ← (right × rec)⊸+˘ out_st
+    down_st ← (down × out_wid)⊸+˘ up_st
+    left_st ← (down × rec)⊸+˘ out_st
+    right_st ← (right × out_wid)⊸+˘ left_st
+    ExtendLink ← {𝕨𝕊𝕩:((⊣≍((⊑𝕨) × out_wid)⊸+)˜)˘ (⊑𝕩)}
+    out ← up‿down‿right‿left ExtendLink˘ up_st‿down_st‿right_st‿left_st
+    numel ← ×´(¯2↓≢out)
+    numel‿2‿2⥊out
+}
+#up_links‿down_links‿right_links‿left_links ← MkLinks sys_w_lines
+links ← MkLinks sys_w_lines
 
 PerFrame ← {𝕤
     elapsedSecs ← ⌈clock.Time@
@@ -57,6 +74,7 @@ PerFrame ← {𝕤
     {white DrawRectangleLines 𝕩}˘ out_lines
     {white DrawRectangleLines 𝕩}˘ sys_w_lines
     {white‿font‿fontSize r.draw.Text 𝕩}˘ sys_w_txt
+    {white r.draw.Line 𝕩}˘ links
 } r.draw._withCanvas⟜black
 
 PerFrame•_While_(¬r.window.ShouldClose)r.window._openAs "DistGEMM"
