@@ -43,13 +43,20 @@ sys_interleave ← {
 }
 spOffX‿spOffY ← 150‿170
 sys_w_lines ← (sys_interleave + (spOffX‿spOffY‿0‿0⊸+˘ w_lines))
-•Show sys_w_lines
+sys_w_start ← 2↑˘sys_w_lines
+sys_w_txt_pos ← ((out_wid‿out_wid)÷2)⊸+˘ sys_w_start
+sys_w_txt ← (<˘ sys_w_txt_pos) ∾˘ (•Fmt¨ ⥊weight)
+•Show sys_w_txt
+fontSize ← 20
+
 PerFrame ← {𝕤
     elapsedSecs ← ⌈clock.Time@
+    font ← r.font.LoadRaylib@
     {white DrawRectangleLines 𝕩}˘ act_lines
     {white DrawRectangleLines 𝕩}˘ w_lines
     {white DrawRectangleLines 𝕩}˘ out_lines
     {white DrawRectangleLines 𝕩}˘ sys_w_lines
+    {white‿font‿fontSize r.draw.Text 𝕩}˘ sys_w_txt
 } r.draw._withCanvas⟜black
 
 PerFrame•_While_(¬r.window.ShouldClose)r.window._openAs "DistGEMM"
