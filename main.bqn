@@ -3,13 +3,20 @@
 tileSize ← 3
 dims ← tileSize‿tileSize
 nsize ← ×´ dims
+
 clock ← r.StartClock@
 MkData ← •rand.Range˜
 activations ← ⥊⟜(MkData+´) dims
 weight ← ⥊⟜(MkData+´) dims
 expectedOut ← activations +˝∘×⎉1‿∞ weight
 
-# display expectedOut
+rdCy ← (2×tileSize)-1
+outCy ← tileSize + (tileSize - 1) + tileSize
+a1 ← ⌽˘(⍉activations)
+a2 ← ((tileSize - 1) + outCy) ↑˘ a1
+a3 ← (tileSize + (↕tileSize)) ⌽˘ a2
+a3_ts ← ⌽∾˝(dims ↕ a3)
+
 spacing ← 0
 min_y ← 20
 max_x ← 20
@@ -43,11 +50,15 @@ sys_interleave ← {
 }
 spOffX‿spOffY ← 150‿170
 sys_w_lines ← (sys_interleave + (spOffX‿spOffY‿0‿0⊸+˘ w_lines))
-sys_w_start ← 2↑˘sys_w_lines
-sys_w_txt_pos ← ((out_wid‿out_wid)÷2)⊸+˘ sys_w_start
-sys_w_txt ← (<˘ sys_w_txt_pos) ∾˘ (•Fmt¨ ⥊weight)
+MkTxt ← {𝕨𝕊𝕩:
+    sys_w_start ← 2↑˘𝕩
+    sys_w_txt_pos ← ((out_wid‿out_wid)÷2)⊸+˘ sys_w_start
+    (<˘ sys_w_txt_pos) ∾˘ (•Fmt¨ ⥊𝕨)
+}
+sys_w_txt ← weight MkTxt sys_w_lines
 fontSize ← 20
 
+sys_act_lines ← (sys_interleave + (0‿spOffY‿0‿0⊸+˘ act_lines))
 right ← [1, 0]
 down ← [0, 1]
 up ← ¯1×down
@@ -63,17 +74,25 @@ MkLinks ← {𝕊𝕩:
     numel ← ×´(¯2↓≢out)
     numel‿2‿2⥊out
 }
-#up_links‿down_links‿right_links‿left_links ← MkLinks sys_w_lines
+
 links ← MkLinks sys_w_lines
 
+secs_per_step ← 3
+duration ← outCy × secs_per_step
 PerFrame ← {𝕤
     elapsedSecs ← ⌈clock.Time@
+    secs_idx ←  duration | elapsedSecs
+    step_idx ← ⌊(secs_idx ÷ secs_per_step)
+    # •Show secs_idx‿step_idx‿(step_idx ⊏ a3_ts)
     font ← r.font.LoadRaylib@
     {white DrawRectangleLines 𝕩}˘ act_lines
     {white DrawRectangleLines 𝕩}˘ w_lines
     {white DrawRectangleLines 𝕩}˘ out_lines
     {white DrawRectangleLines 𝕩}˘ sys_w_lines
     {white‿font‿fontSize r.draw.Text 𝕩}˘ sys_w_txt
+    {white DrawRectangleLines 𝕩}˘ sys_act_lines
+    sys_a_txt ← (step_idx ⊏ a3_ts) MkTxt sys_act_lines
+    {white‿font‿fontSize r.draw.Text 𝕩}˘ sys_a_txt
     {white r.draw.Line 𝕩}˘ links
 } r.draw._withCanvas⟜black
 
