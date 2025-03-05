@@ -51,7 +51,7 @@ MkLinkData ← {w𝕊a3:
     link_ex2 ← (¯1×t×(↕t)) ⌽˘ link_ex1
     link_ex3 ← ⍉˘outCy‿t‿t⥊⍉link_ex2
     link_ex4 ← (t-1)⌽¯1⊏˘ link_ex3
-    (¯1⌽link_ex3)‿(⌽˘⍉link_ex4)
+    link_ex3‿(⌽˘⍉link_ex4)
 }
 
 
@@ -67,10 +67,10 @@ out_tl ← MkGridPts out_start
 MkGridLines ← (∾⟜out_spacing)˘
 act_lines ← MkGridLines out_tl
 NextLines ← {𝕨𝕊𝕩:
-          max_x ← ⌈˝⌈˝𝕩
-          min_x ← ⌊˝⊑˘𝕩
-          diff_x ← max_x - min_x
-          out ← (⊑diff_x + 𝕨)‿0‿0‿0⊸+˘ 𝕩
+    max_x ← ⌈˝⌈˝𝕩
+    min_x ← ⌊˝⊑˘𝕩
+    diff_x ← max_x - min_x
+    out ← (⊑diff_x + 𝕨)‿0‿0‿0⊸+˘ 𝕩
 }
 BelowLines ← {𝕨𝕊𝕩:
     max_y ← ⌈˝⌈˝𝕩
@@ -81,7 +81,8 @@ BelowLines ← {𝕨𝕊𝕩:
 x_spacing ← 3×rec
 w_lines ← x_spacing NextLines act_lines
 out_lines ← x_spacing NextLines w_lines
-w2_lines ← x_spacing NextLines out_lines
+w_lines2 ← x_spacing NextLines out_lines
+out_lines2 ← x_spacing NextLines w_lines2
 
 DrawRectangleLines ← {r‿g‿b‿a𝕊x‿y‿wx‿wy:
 raylib.DrawRectangleLines⟨x, y, wx, wy, r‿g‿b‿a⟩
@@ -101,11 +102,15 @@ sys_w_lines ← (sys_interleave + (spOffX‿spOffY‿0‿0⊸+˘ w_lines))
 sys_w_lines2 ← (0) BelowLines sys_w_lines
 MkTxt ← {𝕨𝕊𝕩:
     sys_w_start ← 2↑˘𝕩
-    sys_w_txt_pos ← ((out_wid‿out_wid)÷2)⊸+˘ sys_w_start
+    sys_w_txt_pos ← ((out_wid‿out_wid)÷4)⊸+˘ sys_w_start
     (<˘ sys_w_txt_pos) ∾˘ (•Fmt¨ ⥊𝕨)
 }
+act_txt ← activations MkTxt act_lines
+w_txt ← weight MkTxt w_lines
+w_txt2 ← weight2 MkTxt w_lines2
 
 sys_w_txt ← weight MkTxt sys_w_lines
+sys_w_txt2 ← weight2 MkTxt sys_w_lines2
 fontSize ← 20
 
 sys_act_lines ← (sys_interleave + (0‿spOffY‿0‿0⊸+˘ act_lines))
@@ -144,7 +149,12 @@ sys_act_ts ← (⌽⎉3(∾˝((tileSize‿tileSize)↕act_ts)))
 
 expectedOut ← activations MatMul weight
 expectedOut2 ← expectedOut MatMul weight2
-link_ts‿linkData ← weight MkLinkData act_ts
+
+out_txt ← expectedOut MkTxt out_lines
+out_txt2 ← expectedOut2 MkTxt out_lines2
+
+link_ts0‿linkData ← weight MkLinkData act_ts
+link_ts ← ¯1⌽link_ts0
 ProcessOut ← {𝕊𝕩:
   lz ← (tileSize‿(tileSize - 1))⥊0
   lz∾˘𝕩
@@ -153,26 +163,48 @@ linkOut ← ProcessOut linkData
 link_ts2‿linkData2 ← weight2 MkLinkData linkOut
 
 secs_per_step ← 3
-duration ← outCy × secs_per_step
+totalMatMuls ← 2
+nonOverlap_step ← ((tileSize + 1))
+matmul_switch_freq ←  (totalMatMuls - 1) × nonOverlap_step × secs_per_step
+lastMatmul ← outCy × secs_per_step
+duration ← matmul_switch_freq + lastMatmul
+
+
+nonOverlap_zs ← ((totalMatMuls - 1) × nonOverlap_step)‿tileSize‿tileSize ⥊ 0
+# FIXME: This will work only for two matmuls but the
+link_ts_o ← >(<˘link_ts) ∾ (<˘nonOverlap_zs)
+link_ts2_o ← >(<˘nonOverlap_zs) ∾ (<˘link_ts2)
+sys_act_ts_o ← >(<˘sys_act_ts) ∾ (<˘nonOverlap_zs)
+
 PerFrame ← {𝕤
     elapsedSecs ← ⌈clock.Time@
     secs_idx ←  duration | elapsedSecs
     step_idx ← ⌊(secs_idx ÷ secs_per_step)
-    link1_data ← step_idx ⊏ link_ts
+    link1_data ← step_idx ⊏ link_ts_o
+    link2_data ← step_idx ⊏ link_ts2_o
     font ← r.font.LoadRaylib@
     {white DrawRectangleLines 𝕩}˘ act_lines
     {white DrawRectangleLines 𝕩}˘ w_lines
     {white DrawRectangleLines 𝕩}˘ out_lines
-    {white DrawRectangleLines 𝕩}˘ w2_lines
+    {white DrawRectangleLines 𝕩}˘ w_lines2
+    {white DrawRectangleLines 𝕩}˘ out_lines2
     {white DrawRectangleLines 𝕩}˘ sys_w_lines
     {white DrawRectangleLines 𝕩}˘ sys_w_lines2
+    {white‿font‿fontSize r.draw.Text 𝕩}˘ act_txt
+    {white‿font‿fontSize r.draw.Text 𝕩}˘ w_txt
+    {white‿font‿fontSize r.draw.Text 𝕩}˘ out_txt
+    {white‿font‿fontSize r.draw.Text 𝕩}˘ w_txt2
+    {white‿font‿fontSize r.draw.Text 𝕩}˘ out_txt2
     {white‿font‿fontSize r.draw.Text 𝕩}˘ sys_w_txt
+    {white‿font‿fontSize r.draw.Text 𝕩}˘ sys_w_txt2
     {white DrawRectangleLines 𝕩}˘ sys_act_lines
-    sys_a_txt ← (step_idx ⊏ sys_act_ts) MkTxt sys_act_lines
+    sys_a_txt ← (step_idx ⊏ sys_act_ts_o) MkTxt sys_act_lines
     {white‿font‿fontSize r.draw.Text 𝕩}˘ sys_a_txt
     color1 ← >(⊑⟜white‿green)¨ ((0⊸≠)¨ ⥊link1_data)
     color1 {𝕨‿font‿fontSize r.draw.Text 𝕩}˘ ((<˘down_mid1) ∾˘ (•Fmt ¨(⥊link1_data)))
     {white r.draw.Line 𝕩}˘ links1
+    color2 ← >(⊑⟜white‿green)¨ ((0⊸≠)¨ ⥊link2_data)
+    color2 {𝕨‿font‿fontSize r.draw.Text 𝕩}˘ ((<˘down_mid2) ∾˘ (•Fmt ¨(⥊link2_data)))
     {white r.draw.Line 𝕩}˘ links2
 } r.draw._withCanvas⟜black
 
