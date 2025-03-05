@@ -72,9 +72,17 @@ NextLines ← {𝕨𝕊𝕩:
           diff_x ← max_x - min_x
           out ← (⊑diff_x + 𝕨)‿0‿0‿0⊸+˘ 𝕩
 }
+BelowLines ← {𝕨𝕊𝕩:
+    max_y ← ⌈˝⌈˝𝕩
+    min_y ← ⌊˝(1⊸⊑)˘𝕩
+    diff_y ← max_y - min_y
+    out ← 0‿(⊑diff_y + 𝕨)‿0‿0⊸+˘ 𝕩
+}
 x_spacing ← 3×rec
 w_lines ← x_spacing NextLines act_lines
 out_lines ← x_spacing NextLines w_lines
+w2_lines ← x_spacing NextLines out_lines
+
 DrawRectangleLines ← {r‿g‿b‿a𝕊x‿y‿wx‿wy:
 raylib.DrawRectangleLines⟨x, y, wx, wy, r‿g‿b‿a⟩
 }⎉1‿2
@@ -88,7 +96,9 @@ sys_interleave ← {
 }
 # FIXME: This offset should be derived from max_y in expected out
 spOffX‿spOffY ← 150‿170
+
 sys_w_lines ← (sys_interleave + (spOffX‿spOffY‿0‿0⊸+˘ w_lines))
+sys_w_lines2 ← (0) BelowLines sys_w_lines
 MkTxt ← {𝕨𝕊𝕩:
     sys_w_start ← 2↑˘𝕩
     sys_w_txt_pos ← ((out_wid‿out_wid)÷2)⊸+˘ sys_w_start
@@ -114,13 +124,20 @@ MkLinks ← {𝕊𝕩:
 }
 
 out_l1 ← MkLinks sys_w_lines
+out_l2 ← MkLinks sys_w_lines2
 ProcessLinks ← {𝕊out:
   numel ← ×´(¯2↓≢out)
   numel‿2‿2⥊out
 }
 links1 ← ProcessLinks out_l1
-up_l1‿down_l1‿left_l1‿right_l1 ← <˘ out_l1
-down_mid1 ← ÷⟜2˘+˝˘ down_l1
+links2 ← ProcessLinks out_l2
+
+GetDownMid ← {𝕊out_l1:
+           up_l1‿down_l1‿left_l1‿right_l1 ← <˘ out_l1
+           ÷⟜2˘+˝˘ down_l1
+}
+down_mid1 ← GetDownMid out_l1
+down_mid2 ← GetDownMid out_l2
 
 act_ts ← (MkActTs activations)
 sys_act_ts ← (⌽⎉3(∾˝((tileSize‿tileSize)↕act_ts)))
@@ -146,7 +163,9 @@ PerFrame ← {𝕤
     {white DrawRectangleLines 𝕩}˘ act_lines
     {white DrawRectangleLines 𝕩}˘ w_lines
     {white DrawRectangleLines 𝕩}˘ out_lines
+    {white DrawRectangleLines 𝕩}˘ w2_lines
     {white DrawRectangleLines 𝕩}˘ sys_w_lines
+    {white DrawRectangleLines 𝕩}˘ sys_w_lines2
     {white‿font‿fontSize r.draw.Text 𝕩}˘ sys_w_txt
     {white DrawRectangleLines 𝕩}˘ sys_act_lines
     sys_a_txt ← (step_idx ⊏ sys_act_ts) MkTxt sys_act_lines
@@ -154,6 +173,7 @@ PerFrame ← {𝕤
     color1 ← >(⊑⟜white‿green)¨ ((0⊸≠)¨ ⥊link1_data)
     color1 {𝕨‿font‿fontSize r.draw.Text 𝕩}˘ ((<˘down_mid1) ∾˘ (•Fmt ¨(⥊link1_data)))
     {white r.draw.Line 𝕩}˘ links1
+    {white r.draw.Line 𝕩}˘ links2
 } r.draw._withCanvas⟜black
 
 PerFrame•_While_(¬r.window.ShouldClose) r.window._openAs "DistGEMM"
