@@ -78,12 +78,34 @@ BelowLines ← {𝕨𝕊𝕩:
     diff_y ← max_y - min_y
     out ← 0‿(⊑diff_y + 𝕨)‿0‿0⊸+˘ 𝕩
 }
+FindMaxMin ← {𝕊𝕩:
+    xy ← ¯2↓˘𝕩
+    max_x ← ⊑⌈˝(⊏˘xy)
+    min_x ← ⊑⌊˝(⊏˘xy)
+    max_y ← ⊑⌈˝(1⊸⊏˘xy)
+    min_y ← ⊑⌊˝(1⊸⊏˘xy)
+    min_x‿min_y‿max_x‿max_y
+}
+
+
 x_spacing ← 3×rec
 w_lines ← x_spacing NextLines act_lines
 out_lines ← x_spacing NextLines w_lines
 w_lines2 ← x_spacing NextLines out_lines
 out_lines2 ← x_spacing NextLines w_lines2
 
+lines_min_max ← FindMaxMin¨ act_lines‿w_lines‿out_lines‿w_lines2‿out_lines2
+FindMid ← {𝕊𝕩:
+     w‿x ← 𝕩
+     l_min_x‿l_min_y‿l_max_x‿l_max_y ← w
+    r_min_x‿r_min_y‿r_max_x‿r_max_y ← x
+    mid_x ← (rec÷1.5) + l_max_x + (r_min_x - l_max_x)÷2
+    mid_y ← l_min_y + (l_max_y - l_min_y) ÷ 2
+    <(mid_x‿mid_y)
+}
+mid_out ← FindMid˘ 2↕lines_min_max
+symbols ← "@"‿"="‿"@"‿"="
+symbols_txt ← mid_out ∾˘ symbols
 DrawRectangleLines ← {r‿g‿b‿a𝕊x‿y‿wx‿wy:
 raylib.DrawRectangleLines⟨x, y, wx, wy, r‿g‿b‿a⟩
 }⎉1‿2
@@ -162,7 +184,7 @@ ProcessOut ← {𝕊𝕩:
 linkOut ← ProcessOut linkData
 link_ts2‿linkData2 ← weight2 MkLinkData linkOut
 
-secs_per_step ← 3
+secs_per_step ← 4
 totalMatMuls ← 2
 nonOverlap_step ← ((tileSize + 1))
 matmul_switch_freq ←  (totalMatMuls - 1) × nonOverlap_step × secs_per_step
@@ -197,6 +219,7 @@ PerFrame ← {𝕤
     {white‿font‿fontSize r.draw.Text 𝕩}˘ out_txt2
     {white‿font‿fontSize r.draw.Text 𝕩}˘ sys_w_txt
     {white‿font‿fontSize r.draw.Text 𝕩}˘ sys_w_txt2
+    {white‿font‿fontSize r.draw.Text 𝕩}˘ symbols_txt
     {white DrawRectangleLines 𝕩}˘ sys_act_lines
     sys_a_txt ← (step_idx ⊏ sys_act_ts_o) MkTxt sys_act_lines
     {white‿font‿fontSize r.draw.Text 𝕩}˘ sys_a_txt
@@ -206,6 +229,7 @@ PerFrame ← {𝕤
     color2 ← >(⊑⟜white‿green)¨ ((0⊸≠)¨ ⥊link2_data)
     color2 {𝕨‿font‿fontSize r.draw.Text 𝕩}˘ ((<˘down_mid2) ∾˘ (•Fmt ¨(⥊link2_data)))
     {white r.draw.Line 𝕩}˘ links2
+
 } r.draw._withCanvas⟜black
 
 PerFrame•_While_(¬r.window.ShouldClose) r.window._openAs "DistGEMM"
