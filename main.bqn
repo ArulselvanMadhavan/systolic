@@ -6,16 +6,54 @@ nsize ← ×´ dims
 
 clock ← r.StartClock@
 MkData ← •rand.Range˜
-activations ← ⥊⟜(MkData+´) dims
-weight ← ⥊⟜(MkData+´) dims
-expectedOut ← activations +˝∘×⎉1‿∞ weight
+activations ← 1+⥊⟜(MkData+´) dims
+weight ← 1+⥊⟜(MkData+´) dims
+weight2 ← 1+⥊⟜(MkData+´) dims
+MatMul ← {activations𝕊weight: activations +˝∘×⎉1‿∞ weight}
 
 rdCy ← (2×tileSize)-1
 outCy ← tileSize + (tileSize - 1) + tileSize
-a1 ← ⌽˘(⍉activations)
-a2 ← ((tileSize - 1) + outCy) ↑˘ a1
-a3 ← (tileSize + (↕tileSize)) ⌽˘ a2
-a3_ts ← ⌽∾˝(dims ↕ a3)
+MkActTs ← {𝕊activations:
+    a1 ← ⌽˘(⍉activations)
+    a2 ← ((tileSize - 1) + outCy) ↑˘ a1
+    a3 ←  (tileSize+↕tileSize)⌽˘a2
+    a3
+}
+
+
+lt_mat ← ≥⌜˜↕tileSize
+ut_mat ← ¬lt_mat
+ls_mat ← (<˘(lt_mat∾ut_mat))
+zs_mat ← (outCy - (≠ls_mat))↑(<(tileSize⥊0))
+ts_mat ← ls_mat ∾ zs_mat
+ts_mat2 ← (⌽⟜ts_mat)˘ (¯1×↕tileSize)
+ts_mat3 ← ∾˝>≍˘⍉ts_mat2
+
+MkLinkData ← {w𝕊a3:
+    t ← tileSize
+    a3_ts ← t‿t↕a3
+    zs ← t‿(t-1)⥊0
+    zas ← a3∾˘zs
+    zst ← t‿t↕zas
+    zst1 ← ⌽∾˝zst
+    zmul ← (w⊸×)˘ zst1
+    zmul2 ← t↕zmul
+    SumDown ← {𝕊𝕩:
+        tt ← (⌽↕t)
+        tres ← (tt {(»⍟𝕨)⎉2 𝕩}˘ 𝕩)
+        (t-1)⊸↓⎉2>tres
+    }
+    res ← SumDown˘ zmul2
+    res2 ← ∾˝˘res
+    link_data ← +`˘res2
+    link_ex ← outCy↑link_data
+    link_ex1 ← ∾≍(<˘link_ex)
+    link_ex2 ← (¯1×t×(↕t)) ⌽˘ link_ex1
+    link_ex3 ← ⍉˘outCy‿t‿t⥊⍉link_ex2
+    link_ex4 ← (t-1)⌽¯1⊏˘ link_ex3
+    link_ex4
+}
+
 
 spacing ← 0
 min_y ← 20
@@ -76,14 +114,27 @@ MkLinks ← {𝕊𝕩:
 }
 
 links ← MkLinks sys_w_lines
+act_ts ← (MkActTs activations)
+sys_act_ts ← (⌽⎉3(∾˝((tileSize‿tileSize)↕act_ts)))
 
+#linkData2 ←
+expectedOut ← activations MatMul weight
+expectedOut2 ← expectedOut MatMul weight2
+linkData ← weight MkLinkData act_ts
+ProcessOut ← {𝕊𝕩:
+  ld ← ⌽˘⍉𝕩
+  lz ← (tileSize‿(tileSize - 1))⥊0
+  lz∾˘ld
+}
+linkOut ← ProcessOut linkData
+linkData2 ← weight2 MkLinkData linkOut
+•Show act_ts‿linkData‿expectedOut‿expectedOut2‿linkData2
 secs_per_step ← 3
 duration ← outCy × secs_per_step
 PerFrame ← {𝕤
     elapsedSecs ← ⌈clock.Time@
     secs_idx ←  duration | elapsedSecs
     step_idx ← ⌊(secs_idx ÷ secs_per_step)
-    # •Show secs_idx‿step_idx‿(step_idx ⊏ a3_ts)
     font ← r.font.LoadRaylib@
     {white DrawRectangleLines 𝕩}˘ act_lines
     {white DrawRectangleLines 𝕩}˘ w_lines
@@ -91,9 +142,9 @@ PerFrame ← {𝕤
     {white DrawRectangleLines 𝕩}˘ sys_w_lines
     {white‿font‿fontSize r.draw.Text 𝕩}˘ sys_w_txt
     {white DrawRectangleLines 𝕩}˘ sys_act_lines
-    sys_a_txt ← (step_idx ⊏ a3_ts) MkTxt sys_act_lines
+    sys_a_txt ← (step_idx ⊏ sys_act_ts) MkTxt sys_act_lines
     {white‿font‿fontSize r.draw.Text 𝕩}˘ sys_a_txt
     {white r.draw.Line 𝕩}˘ links
 } r.draw._withCanvas⟜black
 
-PerFrame•_While_(¬r.window.ShouldClose)r.window._openAs "DistGEMM"
+PerFrame•_While_(¬r.window.ShouldClose) r.window._openAs "DistGEMM"
