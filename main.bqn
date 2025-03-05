@@ -51,7 +51,7 @@ MkLinkData ← {w𝕊a3:
     link_ex2 ← (¯1×t×(↕t)) ⌽˘ link_ex1
     link_ex3 ← ⍉˘outCy‿t‿t⥊⍉link_ex2
     link_ex4 ← (t-1)⌽¯1⊏˘ link_ex3
-    link_ex4
+    (¯1⌽link_ex3)‿(⌽˘⍉link_ex4)
 }
 
 
@@ -86,6 +86,7 @@ sys_interleave ← {
     out ← bxs ∾˘ bys
     out2 ← 4↑˘out
 }
+# FIXME: This offset should be derived from max_y in expected out
 spOffX‿spOffY ← 150‿170
 sys_w_lines ← (sys_interleave + (spOffX‿spOffY‿0‿0⊸+˘ w_lines))
 MkTxt ← {𝕨𝕊𝕩:
@@ -93,6 +94,7 @@ MkTxt ← {𝕨𝕊𝕩:
     sys_w_txt_pos ← ((out_wid‿out_wid)÷2)⊸+˘ sys_w_start
     (<˘ sys_w_txt_pos) ∾˘ (•Fmt¨ ⥊𝕨)
 }
+
 sys_w_txt ← weight MkTxt sys_w_lines
 fontSize ← 20
 
@@ -108,33 +110,38 @@ MkLinks ← {𝕊𝕩:
     left_st ← (down × rec)⊸+˘ out_st
     right_st ← (right × out_wid)⊸+˘ left_st
     ExtendLink ← {𝕨𝕊𝕩:((⊣≍((⊑𝕨) × out_wid)⊸+)˜)˘ (⊑𝕩)}
-    out ← up‿down‿right‿left ExtendLink˘ up_st‿down_st‿right_st‿left_st
-    numel ← ×´(¯2↓≢out)
-    numel‿2‿2⥊out
+    up‿down‿right‿left ExtendLink˘ up_st‿down_st‿right_st‿left_st
 }
 
-links ← MkLinks sys_w_lines
+out_l1 ← MkLinks sys_w_lines
+ProcessLinks ← {𝕊out:
+  numel ← ×´(¯2↓≢out)
+  numel‿2‿2⥊out
+}
+links1 ← ProcessLinks out_l1
+up_l1‿down_l1‿left_l1‿right_l1 ← <˘ out_l1
+down_mid1 ← ÷⟜2˘+˝˘ down_l1
+
 act_ts ← (MkActTs activations)
 sys_act_ts ← (⌽⎉3(∾˝((tileSize‿tileSize)↕act_ts)))
 
-#linkData2 ←
 expectedOut ← activations MatMul weight
 expectedOut2 ← expectedOut MatMul weight2
-linkData ← weight MkLinkData act_ts
+link_ts‿linkData ← weight MkLinkData act_ts
 ProcessOut ← {𝕊𝕩:
-  ld ← ⌽˘⍉𝕩
   lz ← (tileSize‿(tileSize - 1))⥊0
-  lz∾˘ld
+  lz∾˘𝕩
 }
 linkOut ← ProcessOut linkData
-linkData2 ← weight2 MkLinkData linkOut
-•Show act_ts‿linkData‿expectedOut‿expectedOut2‿linkData2
+link_ts2‿linkData2 ← weight2 MkLinkData linkOut
+
 secs_per_step ← 3
 duration ← outCy × secs_per_step
 PerFrame ← {𝕤
     elapsedSecs ← ⌈clock.Time@
     secs_idx ←  duration | elapsedSecs
     step_idx ← ⌊(secs_idx ÷ secs_per_step)
+    link1_data ← step_idx ⊏ link_ts
     font ← r.font.LoadRaylib@
     {white DrawRectangleLines 𝕩}˘ act_lines
     {white DrawRectangleLines 𝕩}˘ w_lines
@@ -144,7 +151,9 @@ PerFrame ← {𝕤
     {white DrawRectangleLines 𝕩}˘ sys_act_lines
     sys_a_txt ← (step_idx ⊏ sys_act_ts) MkTxt sys_act_lines
     {white‿font‿fontSize r.draw.Text 𝕩}˘ sys_a_txt
-    {white r.draw.Line 𝕩}˘ links
+    color1 ← >(⊑⟜white‿green)¨ ((0⊸≠)¨ ⥊link1_data)
+    color1 {𝕨‿font‿fontSize r.draw.Text 𝕩}˘ ((<˘down_mid1) ∾˘ (•Fmt ¨(⥊link1_data)))
+    {white r.draw.Line 𝕩}˘ links1
 } r.draw._withCanvas⟜black
 
 PerFrame•_While_(¬r.window.ShouldClose) r.window._openAs "DistGEMM"
